@@ -20,4 +20,24 @@ const mapDBToModel = ({
   updatedAt: updated_at
 })
 
-module.exports = { mapDBToModel }
+const mapSongModel = ({
+  id,
+  title,
+  performer
+}) => ({
+  id,
+  title,
+  performer
+})
+
+const mapPlaylistModel = ({
+  id,
+  name,
+  username
+}) => ({
+  id,
+  name,
+  username
+})
+
+module.exports = { mapDBToModel, mapSongModel, mapPlaylistModel }

@@ -10,7 +10,7 @@ class SongsService {
   }
 
   async addSong ({ title, year, performer, genre, duration }) {
-    const id = nanoid(16)
+    const id = `song-${nanoid(16)}`
     const insertedAt = new Date().toISOString()
     const updatedAt = insertedAt
 
@@ -29,7 +29,7 @@ class SongsService {
   }
 
   async getSongs () {
-    const result = await this._pool.query('SELECT * FROM songs')
+    const result = await this._pool.query('SELECT id, title, performer FROM songs')
 
     return result.rows.map(mapDBToModel)
   }
