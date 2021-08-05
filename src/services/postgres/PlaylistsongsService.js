@@ -4,8 +4,9 @@ const InvariantError = require('../../exceptions/InvariantError')
 const { mapSongModel } = require('../../utils/mapDBToModel')
 
 class PlaylistsongsService {
-  constructor () {
+  constructor (cacheService) {
     this._pool = new Pool()
+    this._cacheService = cacheService
   }
 
   async addPlaylistsong (playlistId, songId) {
@@ -22,19 +23,32 @@ class PlaylistsongsService {
       throw new InvariantError('Lagu gagal ditambahkan ke playlist')
     }
 
+    await this._cacheService.delete(`songs:${playlistId}`)
     return result.rows[0].id
   }
 
   async getPlaylistsongs (playlistId) {
-    const query = {
-      text: `SELECT songs.* FROM playlistsongs
-      INNER JOIN songs ON songs.id = playlistsongs.song_id
-      WHERE playlistsongs.playlist_id = $1`,
-      values: [playlistId]
-    }
+    try {
+      // mendapatkan lagu dari cache
+      const result = await this._cacheService.get(`songs:${playlistId}`)
+      return JSON.parse(result)
+    } catch (error) {
+      // bila gagal, diteruskan dengan mendapatkan lagu dari database
+      const query = {
+        text: `SELECT songs.* FROM playlistsongs
+        INNER JOIN songs ON songs.id = playlistsongs.song_id
+        WHERE playlistsongs.playlist_id = $1`,
+        values: [playlistId]
+      }
 
-    const result = await this._pool.query(query)
-    return result.rows.map(mapSongModel)
+      const result = await this._pool.query(query)
+      const mappedResult = result.rows.map(mapSongModel)
+
+      // lagu akan disimpan pada cache sebelum fungsi getPlaylistsongs dikembalikan
+      await this._cacheService.set(`songs:${playlistId}`, JSON.stringify(mappedResult))
+
+      return mappedResult
+    }
   }
 
   async deletePlaylistsong (playlistId, songId) {
@@ -48,6 +62,8 @@ class PlaylistsongsService {
     if (!result.rows.length) {
       throw new InvariantError('Lagu gagal dihapus dari playlist')
     }
+
+    await this._cacheService.delete(`songs:${playlistId}`)
   }
 }
 
